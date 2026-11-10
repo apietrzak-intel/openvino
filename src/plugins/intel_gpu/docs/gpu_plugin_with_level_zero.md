@@ -11,6 +11,25 @@ Level Zero is the better-performing runtime on Xe2 and newer Intel GPU architect
 2. Build OpenVINO
     - `cmake --build . --config Release`
 
+### Link-time optimization
+
+Release builds support `-DENABLE_LTO=ON` together with `-DGPU_RT_TYPE=ZE`
+(`L0` is an alias for `ZE`). The bundled oneDNN build inherits the LTO setting.
+OpenVINO and oneDNN use the same staged Level Zero API headers and Intel GPU
+driver-extension headers. The `prepare_ze_headers` target stages these headers
+before oneDNN configures, including when building oneDNN directly. This applies
+to both bundled and system Level Zero loaders. With `-DENABLE_SYSTEM_LEVEL_ZERO=ON`,
+the API headers come from the selected `level-zero` pkg-config package; they must
+meet oneDNN's minimum API version requirement (currently 1.11).
+
+To diagnose header or LTO mismatches, inspect the oneDNN configure output for
+`Found Level Zero headers:`. This must point
+to `<build>/thirdparty/level_zero/include`, not oneDNN's `third_party/level_zero`.
+In `<build>/src/plugins/intel_gpu/thirdparty/onednn_gpu_build/CMakeCache.txt`,
+check that `DNNL_ZE_INCLUDE_DIR` points to that directory and
+`CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE` is `ON`. Use a fresh build directory
+when reproducing a mismatch to avoid cached oneDNN configuration checks.
+
 ## How to check what runtime is used
 ### With [DEBUG_CAPS cmake option](gpu_debug_utils.md)
 0. Prerequisite: Build OpenVINO with [DEBUG_CAPS cmake option](gpu_debug_utils.md)

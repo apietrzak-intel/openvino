@@ -15,7 +15,7 @@ if(ENABLE_ONEDNN_FOR_GPU)
     set(ONEDNN_GPU_BUILD_ALWAYS ON CACHE BOOL "Always run oneDNN GPU external build step. It allows incremental build of oneDNN when it is changed.")
 
     # SUFFIX (empty for single-RT) makes all names per-runtime so COMBINED can build oneDNN
-    # twice (ZE and OCL differ, e.g. LTO is disabled for ZE) without colliding.
+    # twice (ZE and OCL) without colliding.
     function(build_onednn_gpu GPU_RUNTIME SUFFIX)
         include(ExternalProject)
         # Plain (non-CACHE) locals: a COMBINED build calls this function twice, and CACHE would
@@ -150,18 +150,20 @@ if(ENABLE_ONEDNN_FOR_GPU)
             set(ONEDNN_GPU_LIB_PATH "${onednn_lib_path}" CACHE FILEPATH "Path to oneDNN GPU library" FORCE)
         endif()
         set(ONEDNN_GPU_DIR ${CMAKE_CURRENT_SOURCE_DIR}/onednn_gpu)
+        set(ONEDNN_ENABLE_LTO ${ENABLE_LTO})
+        set(onednn_ze_include_dir "${ONEDNN_GPU_DIR}/third_party/level_zero")
+        set(onednn_dependencies)
+        if(TARGET prepare_ze_headers)
+            get_target_property(onednn_ze_include_dir LevelZero::Headers OV_LEVEL_ZERO_INCLUDE_DIR)
+            list(APPEND cmake_extra_args "-DDNNL_ZE_INCLUDE_DIR=${onednn_ze_include_dir}")
+            list(APPEND onednn_dependencies prepare_ze_headers)
+        endif()
         if(GPU_RUNTIME STREQUAL "ZE")
             set(ONEDNN_GPU_RT "ZE")
-            # OneDNN is using different version of L0 headers
-            # Disable LTO to avoid build issues
-            # Enable once headers are unified MFDNN-14973
-            set(ONEDNN_ENABLE_LTO OFF)
         elseif(GPU_RUNTIME STREQUAL "OCL")
             set(ONEDNN_GPU_RT "OCL")
-            set(ONEDNN_ENABLE_LTO ${ENABLE_LTO})
         elseif(GPU_RUNTIME STREQUAL "SYCL")
             set(ONEDNN_GPU_RT "SYCL")
-            set(ONEDNN_ENABLE_LTO ${ENABLE_LTO})
         endif()
 
         ExternalProject_Add(onednn_gpu_build${SUFFIX}
@@ -204,6 +206,7 @@ if(ENABLE_ONEDNN_FOR_GPU)
             BUILD_BYPRODUCTS ${onednn_lib_path}
             BUILD_ALWAYS ${ONEDNN_GPU_BUILD_ALWAYS}
             # Target Options:
+            DEPENDS ${onednn_dependencies}
             EXCLUDE_FROM_ALL ON
         )
 
@@ -223,7 +226,7 @@ if(ENABLE_ONEDNN_FOR_GPU)
                              "${ONEDNN_GPU_DIR}/src/gpu/intel/jit/config"
                              "${ONEDNN_GPU_DIR}/src/gpu/intel/gemm/jit/include"
                              "${ONEDNN_GPU_DIR}/third_party/ngen"
-                             "${ONEDNN_GPU_DIR}/third_party/level_zero")
+                             "${onednn_ze_include_dir}")
         set(LIB_DEFINITIONS ENABLE_ONEDNN_FOR_GPU
                             DNNL_DLL
                             DNNL_DLL_EXPORTS

@@ -94,13 +94,41 @@ if(ENABLE_OV_ZERO_LOADER)
                 $<TARGET_PROPERTY:ze_loader,INTERFACE_INCLUDE_DIRECTORIES>/loader)
         ov_install_static_lib(ze_loader ${OV_CPACK_COMP_CORE})
     endif()
+    if(level_zero_FOUND)
+        find_path(OV_LEVEL_ZERO_HEADER_DIR ze_api.h
+                  HINTS ${level_zero_INCLUDE_DIRS} "${level_zero_INCLUDEDIR}"
+                  PATH_SUFFIXES level_zero
+                  NO_DEFAULT_PATH REQUIRED)
+    else()
+        set(OV_LEVEL_ZERO_HEADER_DIR "${OpenVINO_SOURCE_DIR}/thirdparty/level_zero/level-zero/include")
+    endif()
+    set(ZE_INCLUDE_DIR "${OpenVINO_BINARY_DIR}/thirdparty/level_zero/include")
+    file(GLOB_RECURSE LEVEL_ZERO_HEADERS CONFIGURE_DEPENDS "${OV_LEVEL_ZERO_HEADER_DIR}/*.h")
+    set(COMPUTE_RUNTIME_HEADERS
+        "${OpenVINO_SOURCE_DIR}/src/plugins/intel_gpu/src/runtime/ze/compute_runtime/ze_intel_gpu.h"
+        "${OpenVINO_SOURCE_DIR}/src/plugins/intel_gpu/src/runtime/ze/compute_runtime/ze_stypes.h")
+    set(ZE_HEADERS_STAMP_FILE "${OpenVINO_BINARY_DIR}/thirdparty/level_zero/ze_headers.stamp")
+    add_custom_command(OUTPUT "${ZE_HEADERS_STAMP_FILE}"
+        DEPENDS ${COMPUTE_RUNTIME_HEADERS} ${LEVEL_ZERO_HEADERS}
+        COMMAND "${CMAKE_COMMAND}" -E copy_directory "${OV_LEVEL_ZERO_HEADER_DIR}" "${ZE_INCLUDE_DIR}/level_zero"
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different ${COMPUTE_RUNTIME_HEADERS} "${ZE_INCLUDE_DIR}/level_zero"
+        COMMAND "${CMAKE_COMMAND}" -E touch "${ZE_HEADERS_STAMP_FILE}"
+        COMMENT "Copying Level Zero headers..."
+    )
+    add_custom_target(prepare_ze_headers ALL DEPENDS "${ZE_HEADERS_STAMP_FILE}")
     add_library(level_zero_headers INTERFACE)
     add_library(LevelZero::Headers ALIAS level_zero_headers)
-    if (TARGET prepare_ze_headers)
-        add_dependencies(level_zero_headers prepare_ze_headers)
+    add_dependencies(level_zero_headers prepare_ze_headers)
+    set_property(TARGET level_zero_headers PROPERTY OV_LEVEL_ZERO_INCLUDE_DIR "${ZE_INCLUDE_DIR}")
+    target_include_directories(level_zero_headers INTERFACE
+        $<BUILD_INTERFACE:${ZE_INCLUDE_DIR}>
+        $<BUILD_INTERFACE:${ZE_INCLUDE_DIR}/level_zero>)
+    if(NOT level_zero_FOUND)
+        add_dependencies(ze_loader prepare_ze_headers)
+        set_property(TARGET ze_loader APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES
+            $<BUILD_INTERFACE:${ZE_INCLUDE_DIR}>
+            $<BUILD_INTERFACE:${ZE_INCLUDE_DIR}/level_zero>)
     endif()
-    get_target_property(ZE_INCLUDE_DIRS LevelZero::LevelZero INTERFACE_INCLUDE_DIRECTORIES)
-    target_include_directories(level_zero_headers INTERFACE ${ZE_INCLUDE_DIRS})
 endif()
 
 #
