@@ -94,6 +94,14 @@ if(ENABLE_OV_ZERO_LOADER)
                 $<TARGET_PROPERTY:ze_loader,INTERFACE_INCLUDE_DIRECTORIES>/loader)
         ov_install_static_lib(ze_loader ${OV_CPACK_COMP_CORE})
     endif()
+    if(level_zero_FOUND)
+        find_path(OV_LEVEL_ZERO_HEADER_DIR ze_api.h
+                  HINTS ${level_zero_INCLUDE_DIRS} "${level_zero_INCLUDEDIR}"
+                  PATH_SUFFIXES level_zero
+                  NO_DEFAULT_PATH NO_CACHE REQUIRED)
+    else()
+        set(OV_LEVEL_ZERO_HEADER_DIR "${OpenVINO_SOURCE_DIR}/thirdparty/level_zero/level-zero/include")
+    endif()
     add_library(level_zero_headers INTERFACE)
     add_library(LevelZero::Headers ALIAS level_zero_headers)
     if (TARGET prepare_ze_headers)
