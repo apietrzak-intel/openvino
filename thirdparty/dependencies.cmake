@@ -118,11 +118,10 @@ if(ENABLE_OV_ZERO_LOADER)
     add_custom_target(prepare_ov_level_zero_headers ALL DEPENDS "${OV_LEVEL_ZERO_HEADERS_STAMP}")
     add_library(level_zero_headers INTERFACE)
     add_library(LevelZero::Headers ALIAS level_zero_headers)
-    if (TARGET prepare_ze_headers)
-        add_dependencies(level_zero_headers prepare_ze_headers)
-    endif()
-    get_target_property(ZE_INCLUDE_DIRS LevelZero::LevelZero INTERFACE_INCLUDE_DIRECTORIES)
-    target_include_directories(level_zero_headers INTERFACE ${ZE_INCLUDE_DIRS})
+    add_dependencies(level_zero_headers prepare_ov_level_zero_headers)
+    target_include_directories(level_zero_headers INTERFACE
+        $<BUILD_INTERFACE:${OV_LEVEL_ZERO_INCLUDE_DIR}>
+        $<BUILD_INTERFACE:${OV_LEVEL_ZERO_INCLUDE_DIR}/level_zero>)
 endif()
 
 #
