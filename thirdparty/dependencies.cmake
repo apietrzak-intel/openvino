@@ -102,6 +102,20 @@ if(ENABLE_OV_ZERO_LOADER)
     else()
         set(OV_LEVEL_ZERO_HEADER_DIR "${OpenVINO_SOURCE_DIR}/thirdparty/level_zero/level-zero/include")
     endif()
+    set(OV_LEVEL_ZERO_INCLUDE_DIR "${OpenVINO_BINARY_DIR}/thirdparty/level_zero/shared/include")
+    file(GLOB_RECURSE OV_LEVEL_ZERO_HEADERS CONFIGURE_DEPENDS "${OV_LEVEL_ZERO_HEADER_DIR}/*.h")
+    set(OV_LEVEL_ZERO_EXTENSION_HEADERS
+        "${OpenVINO_SOURCE_DIR}/src/plugins/intel_gpu/src/runtime/ze/compute_runtime/ze_intel_gpu.h"
+        "${OpenVINO_SOURCE_DIR}/src/plugins/intel_gpu/src/runtime/ze/compute_runtime/ze_stypes.h")
+    set(OV_LEVEL_ZERO_HEADERS_STAMP "${OpenVINO_BINARY_DIR}/thirdparty/level_zero/shared/headers.stamp")
+    add_custom_command(OUTPUT "${OV_LEVEL_ZERO_HEADERS_STAMP}"
+        DEPENDS ${OV_LEVEL_ZERO_HEADERS} ${OV_LEVEL_ZERO_EXTENSION_HEADERS}
+        COMMAND "${CMAKE_COMMAND}" -E copy_directory "${OV_LEVEL_ZERO_HEADER_DIR}" "${OV_LEVEL_ZERO_INCLUDE_DIR}/level_zero"
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different ${OV_LEVEL_ZERO_EXTENSION_HEADERS} "${OV_LEVEL_ZERO_INCLUDE_DIR}/level_zero"
+        COMMAND "${CMAKE_COMMAND}" -E touch "${OV_LEVEL_ZERO_HEADERS_STAMP}"
+        COMMENT "Preparing shared Level Zero headers..."
+        VERBATIM)
+    add_custom_target(prepare_ov_level_zero_headers ALL DEPENDS "${OV_LEVEL_ZERO_HEADERS_STAMP}")
     add_library(level_zero_headers INTERFACE)
     add_library(LevelZero::Headers ALIAS level_zero_headers)
     if (TARGET prepare_ze_headers)
