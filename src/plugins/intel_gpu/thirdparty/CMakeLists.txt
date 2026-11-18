@@ -150,6 +150,13 @@ if(ENABLE_ONEDNN_FOR_GPU)
             set(ONEDNN_GPU_LIB_PATH "${onednn_lib_path}" CACHE FILEPATH "Path to oneDNN GPU library" FORCE)
         endif()
         set(ONEDNN_GPU_DIR ${CMAKE_CURRENT_SOURCE_DIR}/onednn_gpu)
+        set(onednn_ze_include_dir "${ONEDNN_GPU_DIR}/third_party/level_zero")
+        set(onednn_dependencies)
+        if(TARGET prepare_ov_level_zero_headers)
+            set(onednn_ze_include_dir "${OV_LEVEL_ZERO_INCLUDE_DIR}")
+            list(APPEND cmake_extra_args "-DDNNL_ZE_INCLUDE_DIR=${onednn_ze_include_dir}")
+            list(APPEND onednn_dependencies prepare_ov_level_zero_headers)
+        endif()
         if(GPU_RUNTIME STREQUAL "ZE")
             set(ONEDNN_GPU_RT "ZE")
             # OneDNN is using different version of L0 headers
@@ -204,6 +211,7 @@ if(ENABLE_ONEDNN_FOR_GPU)
             BUILD_BYPRODUCTS ${onednn_lib_path}
             BUILD_ALWAYS ${ONEDNN_GPU_BUILD_ALWAYS}
             # Target Options:
+            DEPENDS ${onednn_dependencies}
             EXCLUDE_FROM_ALL ON
         )
 
@@ -223,7 +231,7 @@ if(ENABLE_ONEDNN_FOR_GPU)
                              "${ONEDNN_GPU_DIR}/src/gpu/intel/jit/config"
                              "${ONEDNN_GPU_DIR}/src/gpu/intel/gemm/jit/include"
                              "${ONEDNN_GPU_DIR}/third_party/ngen"
-                             "${ONEDNN_GPU_DIR}/third_party/level_zero")
+                             "${onednn_ze_include_dir}")
         set(LIB_DEFINITIONS ENABLE_ONEDNN_FOR_GPU
                             DNNL_DLL
                             DNNL_DLL_EXPORTS
